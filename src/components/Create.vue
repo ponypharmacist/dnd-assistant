@@ -113,17 +113,19 @@
       )
 
     .mt-4.mb-2
-      dnd-input(
+      dnd-textarea(
         v-model="character.proficienciesCombat"
         placeholder="Combat proficiencies"
         label="Combat proficiencies"
+        :rows="3"
       )
 
     .mt-4.mb-2
-      dnd-input(
+      dnd-textarea(
         v-model="character.tools"
         placeholder="Tool proficiencies"
         label="Tool proficiencies"
+        :rows="3"
       )
 
     .mt-4.mb-2
@@ -131,6 +133,14 @@
         v-model="character.gold"
         placeholder="Gold"
         label="Gold"
+      )
+
+    .mt-4.mb-2
+      dnd-textarea(
+        v-model="character.items"
+        placeholder="Equipment and loot"
+        label="Equipment and loot"
+        :rows="6"
       )
 
     <pre>{{ character }}</pre>
@@ -193,6 +203,7 @@ export default {
       proficienciesCombat: '',
       tools: '',
       gold: 0,
+      items: '',
       armor: 'noArmor',
       shield: false,
     },
@@ -339,6 +350,19 @@ export default {
         return toolsString;
       },
     },
+
+    characterItemsList: {
+      get() {
+        const my = this.character;
+        const fromBackground = my.background ? this.backgrounds[my.background].equipment : [];
+        const fromClass = my.clas ? this.classes[my.clas].equipment : [];
+        return flattenArrayMultiline(fromBackground.concat(fromClass));
+      },
+      set(itemsString) {
+        this.character.items = itemsString;
+        return itemsString;
+      },
+    },
   },
 
   // Filters
@@ -373,11 +397,13 @@ export default {
     updateClassDependencies() {
       this.character.proficienciesCombat = this.combatProficienciesList;
       this.character.tools = this.characterToolsList;
+      this.character.items = this.characterItemsList;
     },
 
     updateBackgroundDependencies() {
       this.character.languages = this.totalLanguages;
       this.character.tools = this.characterToolsList;
+      this.character.items = this.characterItemsList;
     },
 
     roll4d6() {

@@ -11,6 +11,7 @@
       :placeholder="placeholder"
       :value="value"
       :disabled="disabled || readonly"
+      :rows="rows"
       autocomplete="off"
       @change="onChange"
       @input="onInput"

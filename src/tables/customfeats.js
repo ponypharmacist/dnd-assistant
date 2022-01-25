@@ -1,6 +1,5 @@
 // Feats
 export default {
-  // General Feats
   actor: {
     title: 'Actor',
   },

@@ -1,6 +1,8 @@
 <template lang="pug">
   .container.golden-border
     create(v-if="mode === 'create'")
+
+    charsheet(v-if="mode === 'view'")
 </template>
 
 <script>
@@ -9,12 +11,14 @@ import {
 } from 'vuex';
 
 import Create from './Create.vue';
+import Charsheet from './Charsheet.vue';
 
 export default {
   name: 'container',
 
   components: {
     Create,
+    Charsheet,
   },
 
   computed: {

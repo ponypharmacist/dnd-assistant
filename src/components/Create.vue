@@ -1,6 +1,6 @@
 <template lang="pug">
   .character-create
-    h2.pb-2 Make a new adventurer
+    h2.pb-2 New adventurer
 
     dnd-input.mb-2(
       v-model="character.name"
@@ -59,8 +59,26 @@
       :list="makeList(customfeats)"
       idField="id"
       valueField="title"
+      @change="updateFeats"
     )
 
+    //- Skills
+    h2.mt-4.mb-1 Skills
+    p.text-center(v-if="skillsLeft") Pick {{ skillsLeft }} skills from class
+    .skills
+      .skill(
+        v-for="(skill, key) in skills"
+        :key="key"
+        :class="{ star: character.skills.includes(key), disabled: !skillAvailable(key) }"
+        @click="toggleSkill(key)"
+      )
+        dnd-checkbox(
+          :value="character.skills.includes(key)"
+          :disabled="!skillAvailable(key)"
+        )
+        span {{ skill.title }} ({{ skill.attribute.slice(0, 3) }})
+
+    //- Attributes
     h2.mt-4.mb-1 Attributes total: {{ sumOfStats }}
 
     .attributes
@@ -89,6 +107,7 @@
         @click="roll4d6"
       )
 
+    //- Derived stats
     .combat-stats.d-flex
       .combat-stat
         .stat-icon.fas.fa-shield-alt
@@ -105,6 +124,46 @@
         .stat-icon.fas.fa-tachometer-alt
         | Speed: {{ characterSpeed }}
 
+    //- Armor and weapon
+    h2.mt-4 Armor & weapon
+
+    dnd-select.mt-4.mb-2(
+      v-model="character.armor"
+      placeholder="Armor"
+      label="Armor"
+      :list="armorsList"
+      idField="id"
+      valueField="title"
+    )
+      template(#option="{item}") {{ `${item.title} (AC: ${item.ac}, ${item.type})` }}
+
+    dnd-select.mt-4.mb-2(
+      v-model="character.melee"
+      placeholder="Melee Weapon"
+      label="Melee Weapon"
+      :list="meleeList"
+      idField="id"
+      valueField="title"
+    )
+      template(#option="{item}") {{ `${item.title} (${item.damage})` }}
+
+    dnd-select.mt-4.mb-2(
+      v-model="character.ranged"
+      placeholder="Ranged Weapon"
+      label="Ranged Weapon"
+      :list="rangedList"
+      idField="id"
+      valueField="title"
+    )
+      template(#option="{item}") {{ `${item.title} (${item.damage})` }}
+
+    .shield-checkbox.mb-2
+      dnd-checkbox(
+        v-model="character.shield"
+        label="Shield"
+      ) Shield
+
+    //- Misc
     .mt-4.mb-2
       dnd-input(
         v-model="character.languages"
@@ -143,11 +202,26 @@
         :rows="6"
       )
 
-    <pre>{{ character }}</pre>
+    // Feats
+    template(v-if="character.feats.length")
+      h2.mt-4 Feats
+      ul.feat-list
+        li.feat-list-item(v-for="feat in character.feats")
+          .feat-name {{ feats[feat].title }}
+          .feat-description {{ feats[feat].description }}
+
+    //- Save character
+    .d-flex.justify-center.mt-4.mb-4
+      dnd-button(
+        label="Save character"
+      )
+
+    //- <pre>{{ character }}</pre>
 </template>
 
 <script>
 import {
+  mapMutations,
   mapState,
 } from 'vuex';
 
@@ -158,6 +232,7 @@ import feats from '../tables/feats';
 import customfeats from '../tables/customfeats';
 import armors from '../tables/armors';
 import weapons from '../tables/weapons';
+import skills from '../tables/skills';
 
 import {
   capitalize,
@@ -168,7 +243,7 @@ import {
   flattenArray,
   flattenArrayMultiline,
   // readLocalStorage,
-  // updateLocalStorage,
+  updateLocalStorage,
 } from '../helpers';
 
 export default {
@@ -182,8 +257,11 @@ export default {
     customfeats,
     armors,
     weapons,
+    skills,
     // Character
     character: {
+      level: 1,
+
       name: null,
       race: null,
       subrace: null,
@@ -191,6 +269,9 @@ export default {
       background: null,
       extraFeat: false,
       extraFeatList: null,
+
+      skills: [],
+      feats: [],
 
       strength: 16,
       dexterity: 14,
@@ -204,8 +285,15 @@ export default {
       tools: '',
       gold: 0,
       items: '',
+
       armor: 'noArmor',
+      melee: 'club',
+      ranged: 'dart',
       shield: false,
+
+      notes: 'Alignment: pick one!',
+      flavor: '',
+      spellslots: [[], [], [], [], [], [], [], [], [], []],
     },
 
     // Misc
@@ -221,7 +309,7 @@ export default {
 
   computed: {
     ...mapState('main', [
-      'mode',
+      'characters',
     ]),
 
     subracesList() {
@@ -231,27 +319,60 @@ export default {
       return subraces ? this.makeList(subraces) : null;
     },
 
+    armorsList() {
+      return Object.keys(armors).map((key) => ({
+        id: key,
+        title: armors[key].title,
+        ac: armors[key].ac,
+        type: armors[key].type,
+      }));
+    },
+
+    meleeList() {
+      return Object.keys(weapons)
+        .filter((key) => !weapons[key].range || weapons[key].modifiers.includes('thrown'))
+        .map((key) => ({
+          id: key,
+          title: weapons[key].title,
+          damage: weapons[key].damage,
+        }));
+    },
+
+    rangedList() {
+      return Object.keys(weapons)
+        .filter((key) => weapons[key].range || weapons[key].modifiers.includes('thrown'))
+        .map((key) => ({
+          id: key,
+          title: weapons[key].title,
+          damage: weapons[key].damage,
+        }));
+    },
+
     sumOfStats() {
       return this.attributes.map((a) => this.character[a]).reduce((a, b) => parseInt(a, 10) + parseInt(b, 10));
     },
 
     armorClass() {
       const my = this.character;
-      let attributeModifier = getModifier(my.dexterity);
+      const dexModifier = getModifier(this.attributeTotal('dexterity'));
+      const conModifier = getModifier(this.attributeTotal('constitution'));
+      const wisModifier = getModifier(this.attributeTotal('wisdom'));
+
+      let attributeModifier = dexModifier;
       let baseAC = 10;
       const shield = my.shield ? 2 : 0;
       const myArmor = this.armors[my.armor];
 
       if (my.clas === 'barbarian' && my.armor === 'noArmor') {
-        attributeModifier += getModifier(my.constitution);
+        attributeModifier += conModifier;
       } else if (my.clas === 'monk' && my.armor === 'noArmor' && !my.shield) {
-        attributeModifier += getModifier(my.wisdom);
+        attributeModifier += wisModifier;
       } else if (myArmor.type === 'heavy') {
         baseAC = myArmor.ac;
         attributeModifier = 0;
       } else if (myArmor.type === 'medium') {
         baseAC = myArmor.ac;
-        attributeModifier = getModifier(my.dexterity) >= 2 ? 2 : getModifier(my.dexterity);
+        attributeModifier = dexModifier >= 2 ? 2 : dexModifier;
       } else {
         baseAC = myArmor.ac;
       }
@@ -260,19 +381,20 @@ export default {
 
     characterFeats() {
       const my = this.character;
-      const fromRace = (my.race && this.races[my.race].feats) || [];
-      const fromSubrace = (my.subrace && this.races[my.race].subraces[my.subrace].feats) || [];
-      const fromClass = (my.clas && this.classes[my.clas].feats[1]) || [];
-      const fromBackground = (my.background && this.backgrounds[my.background].feats) || [];
-      const extraFeat = my.extraFeat ? my.extraFeatList : [];
+      const fromRace = races[my.race]?.feats || [];
+      const fromSubrace = races[my.race]?.subraces?.[my.subrace]?.feats || [];
+      const fromClass = classes[my.clas]?.feats[1] || [];
+      const fromBackground = backgrounds[my.background]?.feats || [];
+      const extraFeat = (my.extraFeat && my.extraFeatList) ? [my.extraFeatList] : [];
 
-      return Array.from(new Set(fromRace.concat(fromSubrace).concat(extraFeat).concat(fromClass).concat(fromBackground)));
+      const featList = Array.from(new Set([...fromRace, ...fromSubrace, ...extraFeat, ...fromClass, ...fromBackground]));
+      return featList;
     },
 
     maxHealth() {
       const my = this.character;
-      const toughness = this.characterFeats.includes('dwarvenToughness') ? 1 : 0;
-      const bonus = getModifier(my.constitution);
+      const toughness = this.characterFeats?.includes('dwarvenToughness') ? 1 : 0;
+      const bonus = getModifier(this.attributeTotal('constitution'));
       return my.clas ? this.classes[my.clas].hitDie + bonus + toughness : 0;
       // ToDo: custom feat bonus or something, read up
     },
@@ -343,7 +465,7 @@ export default {
         const fromClass = my.clas ? this.classes[my.clas].tools : [];
         const fromBackground = my.background ? this.backgrounds[my.background].tools : [];
 
-        return Array.from(new Set(fromRace.concat(fromClass).concat(fromBackground)));
+        return Array.from(new Set(fromRace.concat(fromClass).concat(fromBackground))).join(', ');
       },
       set(toolsString) {
         this.character.tools = toolsString;
@@ -363,6 +485,22 @@ export default {
         return itemsString;
       },
     },
+
+    staticSkills() {
+      const my = this.character;
+      const fromRace = races[my.race]?.skills || [];
+      // const fromClass = classes[my.clas]?.skills || [];
+      const fromBg = this.backgrounds[my.background]?.skills || [];
+
+      return Array.from(new Set([...fromRace, ...fromBg]));
+    },
+
+    skillsLeft() {
+      const fromClas = classes[this.character.clas]?.skillsAllowed || 0;
+      const fromRace = races[this.character.race]?.skillpoints || 0;
+
+      return fromClas + fromRace;
+    },
   },
 
   // Filters
@@ -375,6 +513,8 @@ export default {
   },
 
   methods: {
+    ...mapMutations('main', ['updateState']),
+
     makeList(table) {
       return Object.keys(table).map((key) => ({
         id: key,
@@ -387,23 +527,30 @@ export default {
       this.character.languages = this.totalLanguages;
       this.character.proficienciesCombat = this.combatProficienciesList;
       this.character.tools = this.characterToolsList;
+      this.updateSkills();
+      this.updateFeats();
     },
 
     updateSubraceDependencies() {
       this.character.languages = this.totalLanguages;
       this.character.proficienciesCombat = this.combatProficienciesList;
+      this.updateFeats();
     },
 
     updateClassDependencies() {
       this.character.proficienciesCombat = this.combatProficienciesList;
       this.character.tools = this.characterToolsList;
       this.character.items = this.characterItemsList;
+      this.updateSkills();
+      this.updateFeats();
     },
 
     updateBackgroundDependencies() {
       this.character.languages = this.totalLanguages;
       this.character.tools = this.characterToolsList;
       this.character.items = this.characterItemsList;
+      this.updateSkills();
+      this.updateFeats();
     },
 
     roll4d6() {
@@ -451,11 +598,50 @@ export default {
 
       return this.extraFeat ? 0 : fromRace + fromSubrace;
     },
+
+    updateSkills() {
+      this.character.skills = this.staticSkills;
+    },
+
+    updateFeats() {
+      this.character.feats = this.characterFeats;
+    },
+
+    toggleSkill(skill) {
+      const index = this.character.skills.indexOf(skill);
+      if (index === -1) this.character.skills.push(skill);
+      if (index >= 0) this.character.skills.splice(index, 1);
+    },
+
+    skillAvailable(skill) {
+      const choice = classes[this.character.clas]?.skillsChoice || null;
+      if (this.character.clas) {
+        return choice ? choice.includes(skill) : true;
+      }
+      return false;
+    },
+
+    addCharacter() {
+      console.log('saving');
+      const characterFinal = {
+        ...this.character,
+        maxHealth: this.maxHealth,
+        currentHealth: this.maxHealth,
+        speed: this.characterSpeed,
+      };
+
+      const newListOfCharacters = [...this.characters, characterFinal];
+      updateLocalStorage(newListOfCharacters, 'localCharactersList');
+
+      this.updateState({ param: 'mode', value: 'view' });
+    },
   },
 };
 </script>
 
 <style lang="sass" scoped>
+$yellow: #ecbe57
+
 h2
   font-size: 20px
   text-align: center
@@ -521,4 +707,38 @@ h2
       height: 16px
       margin-right: 8px
       color: #fff
+
+// Skills
+.skills
+  display: flex
+  flex-wrap: wrap
+
+  .skill
+    display: flex
+    align-items: center
+    width: 50%
+    color: #fff
+    cursor: pointer
+
+    &.star
+      color: $yellow
+
+    &.disabled
+      color: #bbb
+      pointer-events: none
+
+    span
+      padding-left: 4px
+
+// Feats
+.feat-list
+  list-style-type: none
+
+  .feat-list-item
+    margin-bottom: 12px
+
+  .feat-name
+  .feat-description
+    font-family: 'Open Sans', Arial, Helvetica, sans-serif
+    color: #fff
 </style>

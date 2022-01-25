@@ -4,6 +4,9 @@
     :class="componentClasses"
     :id="`dnd-select--${selectId}`"
   )
+    .label(
+      v-if="label && (value || value === 0)"
+    ) {{ label }}
 
     // Selected value
     .dnd-select-selected(
@@ -58,7 +61,7 @@
         @click="onItemClick(item)"
       )
         slot(
-          name="item"
+          name="option"
           :item="item"
         )
           | {{ item[valueField] || item }}
@@ -318,14 +321,14 @@ $icon-arrow: url('~@/assets/select-arrow.svg') no-repeat 0 0 / 100% 100%
   user-select: none
   color: #333
 
-  label
-    display: inline-block
-    margin-bottom: 5px
-    padding-left: 1px
-    font-size: 13px
-    line-height: 16px
-    font-family: inherit
-    font-weight: 500
+  .label
+    position: absolute
+    top: -10px
+    left: 5px
+    font-size: 10px
+    font-weight: 200
+    color: $yellow
+    z-index: 1
 
   .dnd-select-item,
   .dnd-select-selected

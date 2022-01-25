@@ -17,7 +17,7 @@
     )
 
     dnd-select.mb-2(
-      v-if="character.race && races[character.race].subraces"
+      v-show="character.race && races[character.race].subraces"
       v-model="character.subrace"
       placeholder="Subrace"
       :list="subracesList"
@@ -214,14 +214,15 @@
     .d-flex.justify-center.mt-4.mb-4
       dnd-button(
         label="Save character"
+        @click="addCharacter"
       )
 
-    //- <pre>{{ character }}</pre>
+    <pre>{{ character }}</pre>
 </template>
 
 <script>
 import {
-  mapMutations,
+  mapActions,
   mapState,
 } from 'vuex';
 
@@ -255,7 +256,6 @@ export default {
     classes,
     feats,
     customfeats,
-    armors,
     weapons,
     skills,
     // Character
@@ -320,12 +320,13 @@ export default {
     },
 
     armorsList() {
-      return Object.keys(armors).map((key) => ({
-        id: key,
-        title: armors[key].title,
-        ac: armors[key].ac,
-        type: armors[key].type,
-      }));
+      return Object.keys(armors)
+        .map((key) => ({
+          id: key,
+          title: armors[key].title,
+          ac: armors[key].ac,
+          type: armors[key].type,
+        }));
     },
 
     meleeList() {
@@ -361,7 +362,7 @@ export default {
       let attributeModifier = dexModifier;
       let baseAC = 10;
       const shield = my.shield ? 2 : 0;
-      const myArmor = this.armors[my.armor];
+      const myArmor = armors[my.armor];
 
       if (my.clas === 'barbarian' && my.armor === 'noArmor') {
         attributeModifier += conModifier;
@@ -513,7 +514,7 @@ export default {
   },
 
   methods: {
-    ...mapMutations('main', ['updateState']),
+    ...mapActions('main', ['onStartup']),
 
     makeList(table) {
       return Object.keys(table).map((key) => ({
@@ -600,11 +601,11 @@ export default {
     },
 
     updateSkills() {
-      this.character.skills = this.staticSkills;
+      this.character.skills = [...this.staticSkills];
     },
 
     updateFeats() {
-      this.character.feats = this.characterFeats;
+      this.character.feats = [...this.characterFeats];
     },
 
     toggleSkill(skill) {
@@ -622,7 +623,6 @@ export default {
     },
 
     addCharacter() {
-      console.log('saving');
       const characterFinal = {
         ...this.character,
         maxHealth: this.maxHealth,
@@ -633,7 +633,7 @@ export default {
       const newListOfCharacters = [...this.characters, characterFinal];
       updateLocalStorage(newListOfCharacters, 'localCharactersList');
 
-      this.updateState({ param: 'mode', value: 'view' });
+      this.onStartup();
     },
   },
 };
@@ -737,7 +737,6 @@ h2
   .feat-list-item
     margin-bottom: 12px
 
-  .feat-name
   .feat-description
     font-family: 'Open Sans', Arial, Helvetica, sans-serif
     color: #fff

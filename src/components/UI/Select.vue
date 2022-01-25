@@ -2,7 +2,7 @@
   .dnd-select(
     v-clickaway="onClickAway"
     :class="componentClasses"
-    :id="`dnd-select--${selectId}`"
+    :id="selectId"
   )
     .label(
       v-if="label && (value || value === 0)"
@@ -280,7 +280,7 @@ export default {
     getPosition() {
       // eslint-disable-next-line consistent-return
       this.$nextTick(() => {
-        const el = document.querySelector(`#dnd-select--${this.selectId}`);
+        const el = document.getElementById(this.selectId);
         const rect = el.getBoundingClientRect();
         const windowHeight = window.innerHeight;
 
@@ -422,7 +422,7 @@ $icon-arrow: url('~@/assets/select-arrow.svg') no-repeat 0 0 / 100% 100%
     pointer-events: none
     visibility: hidden
     opacity: 0
-    z-index: 1
+    z-index: 2
 
     &.top
       top: unset

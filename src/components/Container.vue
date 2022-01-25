@@ -9,6 +9,9 @@
 import {
   mapState,
 } from 'vuex';
+// import {
+//   clearLocalStorage,
+// } from '../helpers';
 
 import Create from './Create.vue';
 import Charsheet from './Charsheet.vue';
@@ -19,6 +22,10 @@ export default {
   components: {
     Create,
     Charsheet,
+  },
+
+  mounted() {
+    // clearLocalStorage('localCharactersList');
   },
 
   computed: {

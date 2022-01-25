@@ -31,6 +31,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    small: {
+      type: Boolean,
+      default: false,
+    },
   },
 
   computed: {
@@ -38,6 +42,7 @@ export default {
       return {
         'is-round': this.round,
         'is-full-width': this.fullWidth,
+        'is-small': this.small,
         'no-label': !this.label,
         d20: this.d20,
         disabled: this.disabled,
@@ -48,7 +53,6 @@ export default {
 </script>
 
 <style lang="sass" scoped>
-$base-height: 28px
 $yellow: #ecbe57
 $dark: #081414
 $bg-transparent: rgba(255,255,255,0.05)
@@ -99,6 +103,13 @@ $bg-transparent: rgba(255,255,255,0.05)
     border-radius: 50%
     padding: 0
     text-align: center
+
+  &.is-small
+    height: 28px
+    background-color: rgba(252, 186, 3, 0.8)
+    color: #202020
+    border: none
+    padding: 6px 6px
 
   &.d20
     padding-left: 36px

@@ -490,10 +490,10 @@ export default {
     staticSkills() {
       const my = this.character;
       const fromRace = races[my.race]?.skills || [];
-      // const fromClass = classes[my.clas]?.skills || [];
+      const fromClass = classes[my.clas]?.skills || [];
       const fromBg = this.backgrounds[my.background]?.skills || [];
 
-      return Array.from(new Set([...fromRace, ...fromBg]));
+      return Array.from(new Set([...fromRace, ...fromClass, ...fromBg]));
     },
 
     skillsLeft() {

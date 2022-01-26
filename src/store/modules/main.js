@@ -1,5 +1,6 @@
 import {
   readLocalStorage,
+  updateLocalStorage,
 } from '@/helpers';
 
 export default {
@@ -21,6 +22,21 @@ export default {
       state[param] = value;
     },
 
+    updateProperty(state, { param, value }) {
+      state.characters[state.currentCharacter][param] = value;
+    },
+
+    toggleSkill(state, skill) {
+      const target = state.characters[state.currentCharacter].skills;
+
+      if (target.includes(skill)) {
+        const index = target.indexOf(skill);
+        target.splice(index, 1);
+      } else {
+        target.push(skill);
+      }
+    },
+
     updateRollQueue(state, payload) {
       const rollObject = {
         date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -36,6 +52,15 @@ export default {
     removeFromQueue(state, index) {
       state.rollQueue.splice(index, 1);
     },
+
+    nextCharacter(state) {
+      // eslint-disable-next-line prefer-destructuring
+      const length = state.characters.length;
+      const current = state.currentCharacter;
+      const next = current + 1 === length ? 0 : current + 1;
+
+      state.currentCharacter = next;
+    },
   },
 
   actions: {
@@ -45,10 +70,26 @@ export default {
       if (characters?.length) {
         commit('updateState', { param: 'characters', value: characters });
         commit('updateState', { param: 'mode', value: 'view' });
-        commit('updateState', { param: 'currentCharacter', value: '0' });
+        commit('updateState', { param: 'currentCharacter', value: 0 });
       } else {
         commit('updateState', { param: 'mode', value: 'create' });
       }
+    },
+
+    updateProperty({
+      state,
+      commit,
+    }, change) {
+      commit('updateProperty', change);
+      updateLocalStorage(state.characters, 'localCharactersList');
+    },
+
+    toggleSkill({
+      state,
+      commit,
+    }, skill) {
+      commit('toggleSkill', skill);
+      updateLocalStorage(state.characters, 'localCharactersList');
     },
   },
 };

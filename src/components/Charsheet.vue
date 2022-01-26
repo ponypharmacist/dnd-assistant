@@ -18,19 +18,22 @@
       dnd-button(
         label="Roll"
         small
-        class="ml-2 mr-2"
+        class="ml-2 mr-auto"
         @click="rollCustom(customRollValue)"
       )
 
       dnd-button(
+        v-show="characters.length > 1"
         label="Next"
         small
         class="ml-2"
+        @click="nextCharacter"
       )
       dnd-button(
         label="New"
         small
         class="ml-2"
+        @click="updateState({ param: 'mode', value: 'create' })"
       )
 
     .character.d-flex.mt-2
@@ -41,7 +44,13 @@
           | {{ (character.subrace || character.race) | capitalize }}
           | {{ (character.clas) | capitalize }}
 
-      div.ml-auto.pt-1
+      div.ml-auto.pt-1.d-flex
+        dnd-button(
+          label="Edit"
+          small
+          class="ml-2"
+          @click="editMode = !editMode"
+        )
         dnd-button(
           label="Save"
           small
@@ -54,6 +63,7 @@
           class="ml-2"
         )
 
+    //- Attributes
     .attributes
       .attribute(
         v-for="attr in attributes"
@@ -62,19 +72,54 @@
         .attribute-label
           .attribute-title {{ attr.slice(0,3 ) | capitalize }}
           .attribute-modifier {{ character[attr] | getModifier | decoratePositive }}
+
         .attribute-value(
           @click="rollAttribute(attr)"
         ) {{ character[attr] }}
-        .attribute-controls
 
-    pre.mt-4 {{ character.subrace }}
+        .attribute-controls(v-show="editMode")
+          .attr-minus(
+            @click="updateProperty({ param: attr, value: character[attr] - 1 })"
+          )
+          .attr-plus(
+            @click="updateProperty({ param: attr, value: character[attr] + 1 })"
+          )
+
+        .attribute-save(
+          v-show="!editMode"
+          class="clickable"
+          @click="rollSkill(attr, attr)"
+        ) Save {{ getSkillBonus(attr, attr) | decoratePositive }}
+
+    //- Skills
+    .skills
+      .skill(
+        v-for="(skill, key) in skills"
+        :key="key"
+        :class="{ star: character.skills.includes(key) }"
+      )
+        .skill-value(
+          v-show="!editMode"
+        ) {{ getSkillBonus(skill.attribute, key) }}
+        dnd-checkbox(
+          v-show="editMode"
+          :value="character.skills.includes(key)"
+          @click.native="toggleSkill(key)"
+        )
+        span(
+          @click="rollSkill(skill.attribute, key)"
+        ) {{ skill.title }}
+
+    pre.mt-4 {{ characters }}
 </template>
 
 <script>
 import {
+  mapActions,
   mapMutations,
   mapState,
 } from 'vuex';
+
 import {
   capitalize,
   rollDice,
@@ -87,11 +132,32 @@ import {
   // updateLocalStorage,
 } from '../helpers';
 
+import races from '../tables/races';
+import backgrounds from '../tables/backgrounds';
+import classes from '../tables/classes';
+import feats from '../tables/feats';
+import customfeats from '../tables/customfeats';
+import armors from '../tables/armors';
+import weapons from '../tables/weapons';
+import skills from '../tables/skills';
+
 export default {
   name: 'charsheet',
 
   data: () => ({
     customRollValue: '1d20',
+
+    editMode: false,
+
+    // Tables
+    races,
+    backgrounds,
+    classes,
+    feats,
+    customfeats,
+    armors,
+    weapons,
+    skills,
 
     // Misc
     attributes: [
@@ -131,8 +197,15 @@ export default {
 
   methods: {
     ...mapMutations('main', [
+      'updateState',
       'updateRollQueue',
       'removeFromQueue',
+      'nextCharacter',
+    ]),
+
+    ...mapActions('main', [
+      'updateProperty',
+      'toggleSkill',
     ]),
 
     getSkillBonus(attribute, skill) {
@@ -145,7 +218,7 @@ export default {
       const rollResult = rollDice(20);
       const criticalSuccess = rollResult === 20 ? ' CRITICAL SUCCESS!' : '';
       const criticalFail = rollResult === 1 ? ' CRITICAL FAIL!' : '';
-      const message = `You roll {capitalize(skill)} for ${rollResult + bonus}. `;
+      const message = `You roll ${capitalize(skill)} for ${rollResult + bonus}. `;
       const note = criticalSuccess + criticalFail;
 
       this.updateRollQueue({ message, note });
@@ -171,6 +244,15 @@ export default {
 
 <style lang="sass" scoped>
 $yellow: #ecbe57
+$bg-transparent: rgba(255,255,255,0.1)
+
+.clickable
+  text-decoration: underline
+  color: #fff
+  cursor: pointer
+
+  &:hover
+    color: $yellow
 
 // Roll log window
 .roll-queue
@@ -185,6 +267,7 @@ $yellow: #ecbe57
 .queue-item
   display: flex
   align-items: center
+  flex-wrap: wrap
   background-color: rgba(255,255,255,1)
   padding: 3px 12px 3px
   margin: 4px 0
@@ -196,6 +279,7 @@ $yellow: #ecbe57
   color: #999
   font-size: 12px
   padding-right: 6px
+  white-space: nowrap
 
 .roll-string
 
@@ -254,4 +338,51 @@ $yellow: #ecbe57
     display: flex
     align-items: center
     justify-content: center
+    height: 18px
+    margin-top: 4px
+
+    .attr-plus,
+    .attr-minus
+      width: 18px
+      height: 18px
+      background: $bg-transparent url('~@/assets/plus.svg') no-repeat 50% 50% / 75%
+      border-radius: 3px
+      cursor: pointer
+
+      &:hover
+        opacity: 0.85
+
+    .attr-minus
+      margin-right: 6px
+      background-image: url('~@/assets/minus.svg')
+      background-size: 60%
+
+  .attribute-save
+    height: 18px
+    margin-top: 4px
+    font-size: 14px
+
+// Skills
+.skills
+  display: flex
+  flex-wrap: wrap
+
+  .skill
+    display: flex
+    align-items: center
+    width: 50%
+    color: #fff
+    cursor: pointer
+
+    &.star
+      color: $yellow
+
+    .skill-value
+      width: 23px
+      text-align: right
+      padding-right: 4px
+
+    .dnd-checkbox
+      margin-right: 6px
+      height: auto
 </style>

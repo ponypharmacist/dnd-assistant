@@ -131,7 +131,7 @@
       v-model="character.armor"
       placeholder="Armor"
       label="Armor"
-      :list="armorsList"
+      :list="armorsList()"
       idField="id"
       valueField="title"
     )
@@ -141,7 +141,7 @@
       v-model="character.melee"
       placeholder="Melee Weapon"
       label="Melee Weapon"
-      :list="meleeList"
+      :list="meleeList()"
       idField="id"
       valueField="title"
     )
@@ -151,7 +151,7 @@
       v-model="character.ranged"
       placeholder="Ranged Weapon"
       label="Ranged Weapon"
-      :list="rangedList"
+      :list="rangedList()"
       idField="id"
       valueField="title"
     )
@@ -217,7 +217,6 @@
         @click="addCharacter"
       )
 
-    <pre>{{ character }}</pre>
 </template>
 
 <script>
@@ -247,10 +246,17 @@ import {
   updateLocalStorage,
 } from '../helpers';
 
+import {
+  armorsList,
+  meleeList,
+  rangedList,
+} from '../helpers/common';
+
 export default {
   name: 'character-create',
 
   data: () => ({
+    // Tables
     races,
     backgrounds,
     classes,
@@ -258,6 +264,10 @@ export default {
     customfeats,
     weapons,
     skills,
+    armorsList,
+    meleeList,
+    rangedList,
+
     // Character
     character: {
       level: 1,
@@ -317,36 +327,6 @@ export default {
       const subraces = races[this.character.race]?.subraces;
 
       return subraces ? this.makeList(subraces) : null;
-    },
-
-    armorsList() {
-      return Object.keys(armors)
-        .map((key) => ({
-          id: key,
-          title: armors[key].title,
-          ac: armors[key].ac,
-          type: armors[key].type,
-        }));
-    },
-
-    meleeList() {
-      return Object.keys(weapons)
-        .filter((key) => !weapons[key].range || weapons[key].modifiers.includes('thrown'))
-        .map((key) => ({
-          id: key,
-          title: weapons[key].title,
-          damage: weapons[key].damage,
-        }));
-    },
-
-    rangedList() {
-      return Object.keys(weapons)
-        .filter((key) => weapons[key].range || weapons[key].modifiers.includes('thrown'))
-        .map((key) => ({
-          id: key,
-          title: weapons[key].title,
-          damage: weapons[key].damage,
-        }));
     },
 
     sumOfStats() {
@@ -641,6 +621,7 @@ export default {
 
 <style lang="sass" scoped>
 $yellow: #ecbe57
+$green: #4dde14
 
 h2
   font-size: 20px
@@ -667,7 +648,7 @@ h2
     color: #fff
 
     &.text-green
-      color: #4dde14
+      color: $green
 
 .attribute-control
   display: flex

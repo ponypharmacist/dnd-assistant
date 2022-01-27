@@ -35,6 +35,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    tiny: {
+      type: Boolean,
+      default: false,
+    },
   },
 
   computed: {
@@ -43,6 +47,7 @@ export default {
         'is-round': this.round,
         'is-full-width': this.fullWidth,
         'is-small': this.small,
+        'is-tiny': this.tiny,
         'no-label': !this.label,
         d20: this.d20,
         disabled: this.disabled,
@@ -110,6 +115,14 @@ $bg-transparent: rgba(255,255,255,0.05)
     color: #202020
     border: none
     padding: 6px 6px
+
+  &.is-tiny
+    height: 28px
+    background-color: rgba(252, 186, 3, 0.8)
+    color: #202020
+    border: none
+    font-size: 14px
+    padding: 6px 4px
 
   &.d20
     padding-left: 36px

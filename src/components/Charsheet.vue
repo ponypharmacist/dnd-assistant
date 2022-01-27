@@ -11,22 +11,59 @@
 
     //- Character
     .d-flex
-      dnd-input(
+      dnd-input.roll-custom(
         v-model="customRollValue"
         label="Roll custom"
       )
       dnd-button(
         label="Roll"
         small
-        class="ml-2 mr-auto"
+        class="ml-2"
         @click="rollCustom(customRollValue)"
+      )
+
+      dnd-button(
+        label="d4"
+        tiny
+        class="ml-1"
+        @click="rollDiceSingle(4)"
+      )
+      dnd-button(
+        label="d6"
+        tiny
+        class="ml-1"
+        @click="rollDiceSingle(6)"
+      )
+      dnd-button(
+        label="d8"
+        tiny
+        class="ml-1"
+        @click="rollDiceSingle(8)"
+      )
+      dnd-button(
+        label="d10"
+        tiny
+        class="ml-1"
+        @click="rollDiceSingle(10)"
+      )
+      dnd-button(
+        label="d12"
+        tiny
+        class="ml-1"
+        @click="rollDiceSingle(12)"
+      )
+      dnd-button(
+        label="d100"
+        tiny
+        class="ml-1"
+        @click="rollDiceSingle(100)"
       )
 
       dnd-button(
         v-show="characters.length > 1"
         label="Next"
         small
-        class="ml-2"
+        class="ml-auto"
         @click="nextCharacter"
       )
       dnd-button(
@@ -39,11 +76,6 @@
     .character.d-flex.mt-2
       div
         .character-name {{ character.name }}
-        .character-class
-          b {{ `Lvl.${character.level} ` }}
-          | {{ (character.subrace || character.race) | capitalize }}
-          | {{ (character.clas) | capitalize }}
-
       div.ml-auto.pt-1.d-flex
         dnd-button(
           label="Edit"
@@ -52,16 +84,65 @@
           @click="editMode = !editMode"
         )
         dnd-button(
-          label="Save"
-          small
-          class="ml-2"
-        )
-        dnd-button(
           v-if="character.level < 20"
           label="Level Up"
           small
           class="ml-2"
         )
+
+    .character-class.d-flex
+      .d-flex.mr-2.align-center(
+        v-show="editMode"
+      )
+        .attr-minus(
+          @click="updateProperty({ param: 'level', value: character.level - 1 })"
+        )
+        .attr-plus(
+          class="ml-1"
+          @click="updateProperty({ param: 'level', value: character.level + 1 })"
+        )
+
+      div
+        b {{ `Lvl.${character.level} ` }}
+        span {{ (character.subrace || character.race) | capitalize }}
+        span {{ (character.clas) | capitalize }}
+        br
+        span Proficiency Bonus: {{ proficiencyBonus | decoratePositive }}
+
+    //- Health
+    .health
+      .health-controls
+        .attr-plus(
+          @click="updateProperty({ param: 'currentHealth', value: character.currentHealth + 1 })"
+        )
+        .attr-minus(
+          @click="updateProperty({ param: 'currentHealth', value: character.currentHealth - 1 })"
+        )
+      .health-value {{ character.currentHealth }}
+      span of
+      .health-controls(v-show="editMode")
+        .attr-plus(
+          @click="updateProperty({ param: 'maxHealth', value: character.maxHealth + 1 })"
+        )
+        .attr-minus(
+          @click="updateProperty({ param: 'maxHealth', value: character.maxHealth - 1 })"
+        )
+      .health-value {{ character.maxHealth }}
+      span Hit Points
+
+    //- Derived stats
+    .combat-stats.d-flex
+      .combat-stat
+        .stat-icon.fas.fa-shield-alt
+        | AC: {{ armorClass }}
+      .combat-stat.clickable(
+        @click="rollAttribute('dexterity', 'Initiative')"
+      )
+        .stat-icon.fas.fa-skiing
+        | Initiative: {{ character.dexterity | getModifier | decoratePositive }}
+      .combat-stat
+        .stat-icon.fas.fa-tachometer-alt
+        | Speed: {{ character.speed }}
 
     //- Attributes
     .attributes
@@ -91,6 +172,60 @@
           @click="rollSkill(attr, attr)"
         ) Save {{ getSkillBonus(attr, attr) | decoratePositive }}
 
+    //- Weapons
+    .arms-block
+      .d-flex.mt-4.mb-2
+        dnd-select(
+          :value="character.melee"
+          placeholder="Melee Weapon"
+          label="Melee Weapon"
+          :list="meleeList()"
+          idField="id"
+          valueField="title"
+          @change="(val) => updateProperty({ param: 'melee', value: val})"
+        )
+          template(#option="{item}") {{ `${item.title} (${item.damage})` }}
+
+        dnd-button(
+          label="Attack"
+          small
+          class="ml-2"
+          @click="rollMeleeAttack"
+        )
+
+        dnd-button(
+          label="Damage"
+          small
+          class="ml-2"
+          @click="rollMeleeDamage"
+        )
+
+      .d-flex.mt-4.mb-2
+        dnd-select(
+          :value="character.ranged"
+          placeholder="Ranged Weapon"
+          label="Ranged Weapon"
+          :list="rangedList()"
+          idField="id"
+          valueField="title"
+          @change="(val) => updateProperty({ param: 'ranged', value: val})"
+        )
+          template(#option="{item}") {{ `${item.title} (${item.damage})` }}
+
+        dnd-button(
+          label="Attack"
+          small
+          class="ml-2"
+          @click="rollRangedAttack"
+        )
+
+        dnd-button(
+          label="Damage"
+          small
+          class="ml-2"
+          @click="rollRangedDamage"
+        )
+
     //- Skills
     .skills
       .skill(
@@ -110,7 +245,72 @@
           @click="rollSkill(skill.attribute, key)"
         ) {{ skill.title }}
 
-    pre.mt-4 {{ characters }}
+    //- Loot and tools
+    .mt-4.mb-2
+      dnd-select.mt-4.mb-2(
+        :value="character.armor"
+        placeholder="Armor"
+        label="Armor"
+        :list="armorsList()"
+        idField="id"
+        valueField="title"
+        @change="(val) => updateProperty({ param: 'armor', value: val})"
+      )
+        template(#option="{item}") {{ `${item.title} (AC: ${item.ac}, ${item.type})` }}
+
+      .shield-checkbox.mb-2
+        dnd-checkbox(
+          :value="character.shield"
+          label="Shield"
+          @input="(val) => updateProperty({ param: 'shield', value: val})"
+        ) Shield
+
+      dnd-input(
+        :value="character.languages"
+        placeholder="Languages"
+        label="Languages"
+        @input="(val) => updateProperty({ param: 'languages', value: val})"
+      )
+
+    .mt-4.mb-2
+      dnd-textarea(
+        :value="character.proficienciesCombat"
+        placeholder="Combat proficiencies"
+        label="Combat proficiencies"
+        :rows="3"
+      )
+
+    .mt-4.mb-2
+      dnd-textarea(
+        :value="character.tools"
+        placeholder="Tool proficiencies"
+        label="Tool proficiencies"
+        :rows="3"
+      )
+
+    .mt-4.mb-2
+      dnd-input.input-gold(
+        :value="character.gold"
+        placeholder="Gold"
+        label="Gold"
+      )
+
+    .mt-4.mb-2
+      dnd-textarea(
+        :value="character.items"
+        placeholder="Equipment and loot"
+        label="Equipment and loot"
+        :rows="6"
+      )
+
+    //- Feats
+    template(v-if="character.feats.length")
+      h2.mt-4 Feats
+      ul.feat-list
+        li.feat-list-item(v-for="feat in character.feats")
+          .feat-name {{ feats[feat].title }}
+          .feat-description {{ feats[feat].description }}
+
 </template>
 
 <script>
@@ -141,6 +341,12 @@ import armors from '../tables/armors';
 import weapons from '../tables/weapons';
 import skills from '../tables/skills';
 
+import {
+  armorsList,
+  meleeList,
+  rangedList,
+} from '../helpers/common';
+
 export default {
   name: 'charsheet',
 
@@ -158,6 +364,9 @@ export default {
     armors,
     weapons,
     skills,
+    armorsList,
+    meleeList,
+    rangedList,
 
     // Misc
     attributes: [
@@ -183,6 +392,40 @@ export default {
 
     proficiencyBonus() {
       return Math.ceil(this.character.level / 4) + 1;
+    },
+
+    armorClass() {
+      const my = this.character;
+      const dexModifier = getModifier(my.dexterity);
+      const conModifier = getModifier(my.constitution);
+      const wisModifier = getModifier(my.wisdom);
+
+      let attributeModifier = dexModifier;
+      let baseAC = 10;
+      const shield = my.shield ? 2 : 0;
+      const myArmor = armors[my.armor];
+
+      if (my.clas === 'barbarian' && my.armor === 'noArmor') {
+        attributeModifier += conModifier;
+      } else if (my.clas === 'monk' && my.armor === 'noArmor' && !my.shield) {
+        attributeModifier += wisModifier;
+      } else if (myArmor.type === 'heavy') {
+        baseAC = myArmor.ac;
+        attributeModifier = 0;
+      } else if (myArmor.type === 'medium') {
+        baseAC = myArmor.ac;
+        attributeModifier = dexModifier >= 2 ? 2 : dexModifier;
+      } else {
+        baseAC = myArmor.ac;
+      }
+      return baseAC + attributeModifier + shield;
+    },
+
+    meleeAttackBonus() {
+      const my = this.character;
+      const finesse = weapons[my.melee].modifiers.includes('finesse');
+      const highestModifier = Math.max(getModifier(my.strength), getModifier(my.dexterity));
+      return finesse ? highestModifier : getModifier(my.strength);
     },
   },
 
@@ -238,12 +481,72 @@ export default {
 
       this.updateRollQueue({ message });
     },
+
+    rollDiceSingle(sides) {
+      this.updateRollQueue({ message: `You roll a d${sides} for ${rollDice(sides)}.` });
+    },
+
+    rollMeleeAttack() {
+      const my = this.character;
+      const weaponName = weapons[my.melee].title;
+      const rollResult = rollDice(20);
+
+      let note = '';
+      if (rollResult === 20) note = 'CRITICAL HIT!';
+      if (rollResult === 1) note = 'CRITICAL MISS!';
+
+      const message = `You attack with ${weaponName} and roll ${rollResult + this.meleeAttackBonus + this.proficiencyBonus}.`;
+
+      this.updateRollQueue({ message, note });
+    },
+
+    rollMeleeDamage() {
+      const my = this.character;
+      const weaponName = weapons[my.melee].title;
+      const weaponDamage = weapons[my.melee].damage;
+      const rollResult = rollString(weaponDamage);
+
+      const message = `You hit with your ${weaponName} for ${rollResult + this.meleeAttackBonus} damage.`;
+
+      this.updateRollQueue({ message });
+    },
+
+    rollRangedAttack() {
+      const my = this.character;
+      const weaponName = weapons[my.ranged].title;
+      const rollResult = rollDice(20);
+      const bonus = getModifier(my.dexterity) + this.proficiencyBonus;
+
+      let note = '';
+      if (rollResult === 20) note = 'CRITICAL HIT!';
+      if (rollResult === 1) note = 'CRITICAL MISS!';
+
+      const message = `You attack with ${weaponName} and roll ${rollResult + bonus}.`;
+
+      this.updateRollQueue({ message, note });
+    },
+
+    rollRangedDamage() {
+      const my = this.character;
+      const weaponName = weapons[my.ranged].title;
+      const weaponDamage = weapons[my.ranged].damage;
+      const rollResult = rollString(weaponDamage);
+
+      const finesse = weapons[my.ranged].modifiers.includes('finesse');
+      const bonus = finesse ? getModifier(my.dexterity) : getModifier(my.strength);
+      // ToDo: str damage bonus for thrown weapons
+
+      const message = `You shoot your ${weaponName} for ${rollResult + bonus} damage.`;
+
+      this.updateRollQueue({ message });
+    },
   },
 };
 </script>
 
 <style lang="sass" scoped>
 $yellow: #ecbe57
+$green: #4dde14
 $bg-transparent: rgba(255,255,255,0.1)
 
 .clickable
@@ -252,7 +555,10 @@ $bg-transparent: rgba(255,255,255,0.1)
   cursor: pointer
 
   &:hover
-    color: $yellow
+    color: $green
+
+.roll-custom
+  width: 48px
 
 // Roll log window
 .roll-queue
@@ -261,7 +567,7 @@ $bg-transparent: rgba(255,255,255,0.1)
   z-index: 10
   width: calc(100% - 24px)
   right: 12px
-  bottom: 12px
+  bottom: 4px
   color: #000
 
 .queue-item
@@ -269,7 +575,7 @@ $bg-transparent: rgba(255,255,255,0.1)
   align-items: center
   flex-wrap: wrap
   background-color: rgba(255,255,255,1)
-  padding: 3px 12px 3px
+  padding: 3px 8px 3px
   margin: 4px 0
   border-radius: 2px
   // font-family: 'Open Sans', Arial, sans-serif
@@ -279,12 +585,15 @@ $bg-transparent: rgba(255,255,255,0.1)
   color: #999
   font-size: 12px
   padding-right: 6px
+  padding-top: 1px
   white-space: nowrap
 
 .roll-string
+  font-size: 14px
 
 .roll-note
   font-weight: bold
+  padding-left: 4px
 
 // Name
 .character-name
@@ -298,11 +607,27 @@ $bg-transparent: rgba(255,255,255,0.1)
   b
     color: #fff
 
+// Plus|minus
+.attr-plus,
+.attr-minus
+  width: 18px
+  height: 18px
+  background: $bg-transparent url('~@/assets/plus.svg') no-repeat 50% 50% / 75%
+  border-radius: 3px
+  cursor: pointer
+
+  &:hover
+    opacity: 0.85
+
+.attr-minus
+  background-image: url('~@/assets/minus.svg')
+  background-size: 60%
+
 // Attributes
 .attributes
   display: flex
   justify-content: space-between
-  margin: 8px 0
+  margin: 8px 0 12px
 
   .attribute
     display: flex
@@ -314,7 +639,6 @@ $bg-transparent: rgba(255,255,255,0.1)
     display: flex
     text-align: center
 
-    .attribute-title
     .attribute-modifier
       padding-left: 4px
       color: #fff
@@ -341,26 +665,46 @@ $bg-transparent: rgba(255,255,255,0.1)
     height: 18px
     margin-top: 4px
 
-    .attr-plus,
-    .attr-minus
-      width: 18px
-      height: 18px
-      background: $bg-transparent url('~@/assets/plus.svg') no-repeat 50% 50% / 75%
-      border-radius: 3px
-      cursor: pointer
-
-      &:hover
-        opacity: 0.85
-
     .attr-minus
       margin-right: 6px
-      background-image: url('~@/assets/minus.svg')
-      background-size: 60%
 
   .attribute-save
     height: 18px
     margin-top: 4px
     font-size: 14px
+
+// Health
+.health
+  display: flex
+  margin: 12px 0 8px
+  color: #fff
+
+  span
+    height: 44px
+    padding: 0 6px
+    font-size: 22px
+    line-height: 41px
+
+  .health-value
+    display: flex
+    align-items: center
+    justify-content: center
+    width: 44px
+    height: 44px
+    font-size: 22px
+    padding-bottom: 2px
+    background: transparent url('~@/assets/deco-sq-fancy.svg') no-repeat 0 0 / cover
+
+  .health-controls
+    display: flex
+    flex-direction: column
+    justify-content: center
+    height: 44px
+    height: 44px
+    margin-right: 6px
+
+    .attr-minus
+      margin-top: 6px
 
 // Skills
 .skills
@@ -372,7 +716,7 @@ $bg-transparent: rgba(255,255,255,0.1)
     align-items: center
     width: 50%
     color: #fff
-    cursor: pointer
+    user-select: none
 
     &.star
       color: $yellow
@@ -385,4 +729,38 @@ $bg-transparent: rgba(255,255,255,0.1)
     .dnd-checkbox
       margin-right: 6px
       height: auto
+
+    span
+      text-decoration: underline
+      cursor: pointer
+
+      &:hover
+        color: $green
+
+// Derivative stats
+.combat-stats
+  .combat-stat
+    margin-right: 12px
+
+    .stat-icon
+      width: 16px
+      height: 16px
+      margin-right: 8px
+      color: #fff
+
+// Feats
+.feat-list
+  list-style-type: none
+
+  .feat-list-item
+    margin-bottom: 12px
+
+  .feat-description
+    font-family: 'Open Sans', Arial, Helvetica, sans-serif
+    color: #fff
+
+// Weapons block
+.arms-block
+  .dnd-select
+    width: 100%
 </style>

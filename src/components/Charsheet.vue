@@ -18,7 +18,7 @@
       dnd-button(
         label="Roll"
         small
-        class="ml-2"
+        class="ml-1"
         @click="rollCustom(customRollValue)"
       )
 
@@ -55,17 +55,10 @@
       dnd-button(
         label="d100"
         tiny
-        class="ml-1"
+        class="ml-1 mr-auto"
         @click="rollDiceSingle(100)"
       )
 
-      dnd-button(
-        v-show="characters.length > 1"
-        label="Next"
-        small
-        class="ml-auto"
-        @click="nextCharacter"
-      )
       dnd-button(
         label="New"
         small
@@ -76,6 +69,7 @@
     .character.d-flex.mt-2
       div
         .character-name {{ character.name }}
+
       div.ml-auto.pt-1.d-flex
         dnd-button(
           label="Edit"
@@ -83,11 +77,13 @@
           class="ml-2"
           @click="editMode = !editMode"
         )
+
         dnd-button(
-          v-if="character.level < 20"
-          label="Level Up"
+          v-show="characters.length > 1"
+          label="Next"
           small
           class="ml-2"
+          @click="nextCharacter"
         )
 
     .character-class.d-flex
@@ -104,7 +100,7 @@
 
       div
         b {{ `Lvl.${character.level} ` }}
-        span {{ (character.subrace || character.race) | capitalize }}
+        span.pr-1 {{ (character.subrace || character.race) | capitalize }}
         span {{ (character.clas) | capitalize }}
         br
         span Proficiency Bonus: {{ proficiencyBonus | decoratePositive }}

@@ -64,7 +64,7 @@ export default {
     profCombat: ['light armor', 'simple weapons', 'hand crossbows', 'longswords', 'rapiers', 'shortswords'],
     skills: ['dexterity', 'charisma'],
     tools: ['Three musical instruments of your choice'],
-    skillpoints: 3, // any 3, yes
+    skillsAllowed: 3,
     equipment: ['(a rapier), (longsword), or (any simple weapon)', '(a diplomat’s pack) or (an entertainer’s pack)', '(a lute) or (any other musical instrument)', 'leather armor', 'a dagger'],
     wealth: 0,
     cantripsKnown: [0, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],

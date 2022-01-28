@@ -100,7 +100,8 @@
 
       div
         b {{ `Lvl.${character.level} ` }}
-        span.pr-1 {{ (character.subrace || character.race) | capitalize }}
+        span.pr-1 {{ character.race | capitalize }}
+        span.pr-1(v-if="character.subrace") ({{ character.subrace | capitalize }})
         span {{ (character.clas) | capitalize }}
         br
         span Proficiency Bonus: {{ proficiencyBonus | decoratePositive }}
@@ -242,8 +243,26 @@
         ) {{ skill.title }}
 
     //- Loot and tools
+
     .mt-4.mb-2
-      dnd-select.mt-4.mb-2(
+      dnd-input.input-gold(
+        :value="character.gold"
+        placeholder="Gold"
+        label="Gold"
+        @input="(val) => updateProperty({ param: 'gold', value: val})"
+      )
+
+    .mt-4.mb-2
+      dnd-textarea(
+        :value="character.items"
+        placeholder="Equipment and loot"
+        label="Equipment and loot"
+        :rows="12"
+        @input="(val) => updateProperty({ param: 'items', value: val})"
+      )
+
+    .mt-4.mb-2
+      dnd-select.mt-4.mb-1(
         :value="character.armor"
         placeholder="Armor"
         label="Armor"
@@ -254,12 +273,41 @@
       )
         template(#option="{item}") {{ `${item.title} (AC: ${item.ac}, ${item.type})` }}
 
-      .shield-checkbox.mb-2
+      .shield-checkbox
         dnd-checkbox(
           :value="character.shield"
           label="Shield"
           @input="(val) => updateProperty({ param: 'shield', value: val})"
         ) Shield
+
+      .d-flex.modifiers.mt-2.mb-4
+        dnd-select(
+          :value="character.armorModifier"
+          placeholder="Armor Bonus"
+          label="Armor Bonus"
+          :list="modifiers"
+          idField="id"
+          valueField="title"
+          @change="(val) => updateProperty({ param: 'armorModifier', value: val})"
+        )
+        dnd-select(
+          :value="character.meleeModifier"
+          placeholder="Melee Bonus"
+          label="Melee Bonus"
+          :list="modifiers"
+          idField="id"
+          valueField="title"
+          @change="(val) => updateProperty({ param: 'meleeModifier', value: val})"
+        )
+        dnd-select(
+          :value="character.rangedModifier"
+          placeholder="Ranged Bonus"
+          label="Ranged Bonus"
+          :list="modifiers"
+          idField="id"
+          valueField="title"
+          @change="(val) => updateProperty({ param: 'rangedModifier', value: val})"
+        )
 
       dnd-input(
         :value="character.languages"
@@ -274,6 +322,7 @@
         placeholder="Combat proficiencies"
         label="Combat proficiencies"
         :rows="3"
+        @input="(val) => updateProperty({ param: 'proficienciesCombat', value: val})"
       )
 
     .mt-4.mb-2
@@ -282,21 +331,7 @@
         placeholder="Tool proficiencies"
         label="Tool proficiencies"
         :rows="3"
-      )
-
-    .mt-4.mb-2
-      dnd-input.input-gold(
-        :value="character.gold"
-        placeholder="Gold"
-        label="Gold"
-      )
-
-    .mt-4.mb-2
-      dnd-textarea(
-        :value="character.items"
-        placeholder="Equipment and loot"
-        label="Equipment and loot"
-        :rows="6"
+        @input="(val) => updateProperty({ param: 'tools', value: val})"
       )
 
     //- Feats
@@ -336,6 +371,7 @@ import customfeats from '../tables/customfeats';
 import armors from '../tables/armors';
 import weapons from '../tables/weapons';
 import skills from '../tables/skills';
+import modifiers from '../tables/modifiers';
 
 import {
   armorsList,
@@ -363,6 +399,7 @@ export default {
     armorsList,
     meleeList,
     rangedList,
+    modifiers,
 
     // Misc
     attributes: [
@@ -414,7 +451,7 @@ export default {
       } else {
         baseAC = myArmor.ac;
       }
-      return baseAC + attributeModifier + shield;
+      return baseAC + attributeModifier + shield + my.armorModifier;
     },
 
     meleeAttackBonus() {
@@ -491,7 +528,7 @@ export default {
       if (rollResult === 20) note = 'CRITICAL HIT!';
       if (rollResult === 1) note = 'CRITICAL MISS!';
 
-      const message = `You attack with ${weaponName} and roll ${rollResult + this.meleeAttackBonus + this.proficiencyBonus}.`;
+      const message = `You attack with ${weaponName} and roll ${rollResult + my.meleeModifier + this.meleeAttackBonus + this.proficiencyBonus}.`;
 
       this.updateRollQueue({ message, note });
     },
@@ -500,9 +537,9 @@ export default {
       const my = this.character;
       const weaponName = weapons[my.melee].title;
       const weaponDamage = weapons[my.melee].damage;
-      const rollResult = rollString(weaponDamage);
+      const rollResult = rollString(weaponDamage) + my.meleeModifier + this.meleeAttackBonus;
 
-      const message = `You hit with your ${weaponName} for ${rollResult + this.meleeAttackBonus} damage.`;
+      const message = `You hit with your ${weaponName} for ${rollResult} damage.`;
 
       this.updateRollQueue({ message });
     },
@@ -511,7 +548,7 @@ export default {
       const my = this.character;
       const weaponName = weapons[my.ranged].title;
       const rollResult = rollDice(20);
-      const bonus = getModifier(my.dexterity) + this.proficiencyBonus;
+      const bonus = getModifier(my.dexterity) + this.proficiencyBonus + my.rangedModifier;
 
       let note = '';
       if (rollResult === 20) note = 'CRITICAL HIT!';
@@ -526,7 +563,7 @@ export default {
       const my = this.character;
       const weaponName = weapons[my.ranged].title;
       const weaponDamage = weapons[my.ranged].damage;
-      const rollResult = rollString(weaponDamage);
+      const rollResult = rollString(weaponDamage) + my.rangedModifier;
 
       const finesse = weapons[my.ranged].modifiers.includes('finesse');
       const bonus = finesse ? getModifier(my.dexterity) : getModifier(my.strength);
@@ -759,4 +796,11 @@ $bg-transparent: rgba(255,255,255,0.1)
 .arms-block
   .dnd-select
     width: 100%
+
+// Modifiers
+.modifiers
+  justify-content: space-between
+
+  .dnd-select
+    width: 32%
 </style>

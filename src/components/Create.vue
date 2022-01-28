@@ -300,6 +300,9 @@ export default {
       melee: 'club',
       ranged: 'dart',
       shield: false,
+      armorModifier: 0,
+      meleeModifier: 0,
+      rangedModifier: 0,
 
       notes: 'Alignment: pick one!',
       flavor: '',
@@ -608,12 +611,20 @@ export default {
         maxHealth: this.maxHealth,
         currentHealth: this.maxHealth,
         speed: this.characterSpeed,
+        strength: this.attributeTotal('strength'),
+        dexterity: this.attributeTotal('dexterity'),
+        constitution: this.attributeTotal('constitution'),
+        intelligence: this.attributeTotal('intelligence'),
+        wisdom: this.attributeTotal('wisdom'),
+        charisma: this.attributeTotal('charisma'),
       };
 
       const newListOfCharacters = [...this.characters, characterFinal];
       updateLocalStorage(newListOfCharacters, 'localCharactersList');
 
       this.onStartup();
+
+      window.scrollTo(0, 0);
     },
   },
 };
